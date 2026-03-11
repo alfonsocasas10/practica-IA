@@ -449,7 +449,7 @@ void ComportamientoTecnico::VisualizaPlan(const ubicacion &st,
         break;
       case 5:
         cst.f++;
-        cst.f--;
+        cst.c--;
         break;
       case 6:
         cst.c--;
