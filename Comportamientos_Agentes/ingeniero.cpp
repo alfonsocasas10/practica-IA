@@ -63,6 +63,12 @@ int veoCasillaInteresanteI(char i, char c, char d, bool zaps){
   return 0;
 }
 
+char viablePorAlturaI(char casilla, int dif, bool zap){
+
+  if (abs(dif) <= 1 || (abs(dif) <= 2 && zap)) return casilla;
+  else return 'P';
+}
+
 // Niveles iniciales (Comportamientos reactivos simples)
 Action ComportamientoIngeniero::ComportamientoIngenieroNivel_0(Sensores sensores)
 {
@@ -89,19 +95,22 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_0(Sensores sensores
   arriba_izq.c = sensores.posC;
   arriba_izq.brujula = sensores.rumbo;
   arriba_izq.brujula = (Orientacion)((arriba_izq.brujula + 7) % 8);
-
-  if (EsAccesiblePorAltura(actual, zaps)) cout << endl << "accesible" << endl;
  
   ubicacion del = Delante(actual);
 
-  int pos = veoCasillaInteresanteI(sensores.superficie[1], sensores.superficie[2], sensores.superficie[3], zaps);
+  char i = viablePorAlturaI(sensores.superficie[1], sensores.cota[1]-sensores.cota[0], zaps);
+  char c = viablePorAlturaI(sensores.superficie[2], sensores.cota[2]-sensores.cota[0], zaps);
+  char d = viablePorAlturaI(sensores.superficie[3], sensores.cota[3]-sensores.cota[0], zaps);
 
+  int pos = veoCasillaInteresanteI(i, c, d, zaps);
+ 
+  cout << endl << "Casilla delante de Ingeniero: " << sensores.superficie[2] << endl;
   // Comprobar si es transitable y accesible
-  if (pos == 2 && EsAccesiblePorAltura(actual, zaps))
+  if (pos == 2)
     accion = WALK;
-  else if (pos == 3 && EsAccesiblePorAltura(arriba_der, zaps)){
+  else if (pos == 3){
    accion = TURN_SR;
-  } else if (pos == 1 && EsAccesiblePorAltura(arriba_izq, zaps)){
+  } else if (pos == 1){
     accion = TURN_SL;
   } else accion = TURN_SL;
 
