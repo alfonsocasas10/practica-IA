@@ -4,6 +4,8 @@
 #include <queue>
 #include <set>
 
+// ./build/practica2 -m mapas/mapa30.map -n 0 -i 17 5 0 -t 17 17 0
+
 using namespace std;
 
 // =========================================================================
@@ -43,10 +45,68 @@ Action ComportamientoIngeniero::think(Sensores sensores)
   return accion;
 }
 
+int veoCasillaInteresanteI(char i, char c, char d, bool zaps){
+
+  if (c == 'U') return 2;
+  else if (d == 'U') return 3;
+  else if (i == 'U') return 1;
+  else if (!zaps){
+    if (c == 'D') return 2;
+    else if (d == 'D') return 3;
+    else if (i == 'D') return 1;
+  } 
+  
+  if (c == 'C') return 2;
+  else if (d == 'C') return 3;
+  else if (i == 'C') return 1;
+  
+  return 0;
+}
+
 // Niveles iniciales (Comportamientos reactivos simples)
 Action ComportamientoIngeniero::ComportamientoIngenieroNivel_0(Sensores sensores)
 {
-  Action accion = IDLE;
+   Action accion;
+
+   ActualizarMapa(sensores);
+
+   if (sensores.superficie[0] == 'D') zaps = true;
+
+  // Posición actual
+  ubicacion actual;
+  actual.f = sensores.posF;
+  actual.c = sensores.posC;
+  actual.brujula = sensores.rumbo;
+
+  ubicacion arriba_der;
+  arriba_der.f = sensores.posF;
+  arriba_der.c = sensores.posC;
+  arriba_der.brujula = sensores.rumbo;
+  arriba_der.brujula = (Orientacion)((arriba_der.brujula + 1) % 8);
+
+  ubicacion arriba_izq;
+  arriba_izq.f = sensores.posF;
+  arriba_izq.c = sensores.posC;
+  arriba_izq.brujula = sensores.rumbo;
+  arriba_izq.brujula = (Orientacion)((arriba_izq.brujula + 7) % 8);
+
+  if (EsAccesiblePorAltura(actual, zaps)) cout << endl << "accesible" << endl;
+ 
+  ubicacion del = Delante(actual);
+
+  int pos = veoCasillaInteresanteI(sensores.superficie[1], sensores.superficie[2], sensores.superficie[3], zaps);
+
+  // Comprobar si es transitable y accesible
+  if (pos == 2 && EsAccesiblePorAltura(actual, zaps))
+    accion = WALK;
+  else if (pos == 3 && EsAccesiblePorAltura(arriba_der, zaps)){
+   accion = TURN_SR;
+  } else if (pos == 1 && EsAccesiblePorAltura(arriba_izq, zaps)){
+    accion = TURN_SL;
+  } else accion = TURN_SL;
+
+  last_action = accion;
+
   return accion;
 }
 
@@ -67,8 +127,30 @@ bool ComportamientoIngeniero::es_camino(unsigned char c) const
  */
 Action ComportamientoIngeniero::ComportamientoIngenieroNivel_1(Sensores sensores)
 {
-  // TODO: Implementar comportamiento reactivo para el Nivel 1.
-  return IDLE;
+  Action accion = IDLE;
+
+  unsigned char delante = sensores.superficie[2];
+  unsigned char izq = sensores.superficie[1];
+  unsigned char der = sensores.superficie[3];
+
+  if (es_camino(delante))
+  {
+    accion = WALK;
+  }
+  else if (es_camino(izq))
+  {
+    accion = TURN_SL;
+  }
+  else if (es_camino(der))
+  {
+    accion = TURN_SR;
+  }
+  else
+  {
+    accion = TURN_SR; // gira hasta encontrar salida
+  }
+
+  return accion;
 }
 
 // Niveles avanzados (Uso de búsqueda)
