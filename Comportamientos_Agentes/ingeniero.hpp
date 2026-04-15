@@ -21,7 +21,8 @@ public:
    * @param size Tamaño del mapa (si es 0, se inicializa más tarde)
    */
   ComportamientoIngeniero(unsigned int size = 0) : Comportamiento(size) {
-    // Inicializar Variables de Estado
+    zaps = false; 
+    last_action = IDLE;
   }
 
   /**
@@ -182,6 +183,10 @@ private:
   // =========================================================================
   // VARIABLES DE ESTADO (PUEDEN SER EXTENDIDAS POR EL ALUMNO)
   // =========================================================================
+
+  Action last_action;
+  bool zaps;
+
 
 };
 
