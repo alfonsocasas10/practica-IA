@@ -28,10 +28,78 @@ Action ComportamientoTecnico::think(Sensores sensores) {
   return accion;
 }
 
+int veoCasillaInteresanteT(char i, char c, char d, bool zaps){
+
+  if (c == 'U') return 2;
+  else if (d == 'U') return 3;
+  else if (i == 'U') return 1;
+  // Para cuando las zapatillas tengan importancia
+  /*else if (!zaps){
+    if (c == 'D') return 2;
+    else if (d == 'D') return 3;
+    else if (i == 'D') return 1;
+  } */
+  
+  if (c == 'C') return 2;
+  else if (d == 'C') return 3;
+  else if (i == 'C') return 1;
+  
+  return 0;
+}
+
+char viablePorAlturaT(char casilla, int dif){
+
+  if (abs(dif) <= 1) return casilla;
+  else return 'P';
+}
+
 
 // Niveles del técnico
 Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
-  Action accion = IDLE;
+  Action accion;
+
+   ActualizarMapa(sensores);
+
+   if (sensores.superficie[0] == 'D') zaps = true;
+
+  // Posición actual
+  ubicacion actual;
+  actual.f = sensores.posF;
+  actual.c = sensores.posC;
+  actual.brujula = sensores.rumbo;
+
+  ubicacion arriba_der;
+  arriba_der.f = sensores.posF;
+  arriba_der.c = sensores.posC;
+  arriba_der.brujula = sensores.rumbo;
+  arriba_der.brujula = (Orientacion)((arriba_der.brujula + 1) % 8);
+
+  ubicacion arriba_izq;
+  arriba_izq.f = sensores.posF;
+  arriba_izq.c = sensores.posC;
+  arriba_izq.brujula = sensores.rumbo;
+  arriba_izq.brujula = (Orientacion)((arriba_izq.brujula + 7) % 8);
+ 
+cout << endl << "Casilla delante de Tecnico: " << sensores.superficie[2] << endl;
+
+  ubicacion del = Delante(actual);
+
+  char i = viablePorAlturaT(sensores.superficie[1], sensores.cota[1]-sensores.cota[0]);
+  char c = viablePorAlturaT(sensores.superficie[2], sensores.cota[2]-sensores.cota[0]);
+  char d = viablePorAlturaT(sensores.superficie[3], sensores.cota[3]-sensores.cota[0]);
+
+  int pos = veoCasillaInteresanteT(i, c, d, zaps);
+
+  // Comprobar si es transitable y accesible
+  if (pos == 2)
+    accion = WALK;
+  else if (pos == 3){
+   accion = TURN_SR;
+  } else if (pos == 1){
+    accion = TURN_SL;
+  } else accion = TURN_SL;
+
+  last_action = accion;
 
   return accion;
 }
