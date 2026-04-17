@@ -56,9 +56,9 @@ int veoCasillaInteresanteI(char i, char c, char d, bool zaps){
     else if (i == 'D') return 1;
   } 
   
-  if (c == 'C') return 2;
-  else if (d == 'C') return 3;
-  else if (i == 'C') return 1;
+  if (c == 'C'||c == 'D') return 2;
+  else if (d == 'C'||c == 'D') return 3;
+  else if (i == 'C'||c == 'D') return 1;
 
   return 0;
 }
@@ -87,6 +87,24 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_0(Sensores sensores
   ActualizarMapa(sensores);
 
   if (sensores.superficie[0] == 'D') zaps = true;
+
+  // 1. Inicializar la matriz la primera vez y sumar 1 a la casilla actual
+  if (visitas.empty()) {
+      visitas.assign(mapaResultado.size(), vector<int>(mapaResultado[0].size(), 0));
+  }
+  visitas[sensores.posF][sensores.posC]++;
+
+  // 2. Calcular las coordenadas de Frente, Izquierda y Derecha
+  ubicacion actual = {sensores.posF, sensores.posC, sensores.rumbo};
+  ubicacion pos_frente = Delante(actual);
+  
+  ubicacion aux_izq = actual;
+  aux_izq.brujula = (Orientacion)(((int)aux_izq.brujula + 7) % 8);
+  ubicacion pos_izq = Delante(aux_izq);
+  
+  ubicacion aux_der = actual;
+  aux_der.brujula = (Orientacion)(((int)aux_der.brujula + 1) % 8);
+  ubicacion pos_der = Delante(aux_der);
 
   // DETECTAR BLOQUEO
   if (last_action == WALK &&
@@ -148,11 +166,30 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_0(Sensores sensores
 
     accion = giro_preferido;
   }
-
-  // ================= NORMAL =================
+    // ================= NORMAL =================
   else {
-
-    if (pos == 2) {
+    // 1. Si hay una 'U' a la vista, ignoramos la memoria y vamos a por ella
+    if (c == 'U') {
+      accion = WALK;
+      giro_defecto = false;
+    } 
+    else if (d == 'U') {
+      accion = TURN_SR;
+      giro_defecto = false;
+    } 
+    else if (i == 'U') {
+      accion = TURN_SL;
+      giro_defecto = false;
+    }
+    // 2. SISTEMA DE MEMORIA (Solo entra si no hay 'U')
+    else if (es_camino(sensores.superficie[1]) && visitas[pos_izq.f][pos_izq.c] < visitas[pos_frente.f][pos_frente.c]) {
+      accion = TURN_SL;
+    }
+    else if (es_camino(sensores.superficie[3]) && visitas[pos_der.f][pos_der.c] < visitas[pos_frente.f][pos_frente.c]) {
+      accion = TURN_SR;
+    }
+    // 3. MOVIMIENTO NORMAL (Si no hay 'U' y la memoria no pide girar)
+    else if (pos == 2) {
       accion = WALK;
       giro_defecto = false;
     }
@@ -164,6 +201,7 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_0(Sensores sensores
       accion = TURN_SL;
       giro_defecto = false;
     }
+    // 4. BLOQUEO / ROTACIÓN POR DEFECTO
     else {
       // probar ambos lados
       if (!giro_defecto){
