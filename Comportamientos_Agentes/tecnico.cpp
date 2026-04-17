@@ -53,52 +53,122 @@ char viablePorAlturaT(char casilla, int dif){
   else return 'P';
 }
 
+int veoCasillaExplorarT(bool vi, bool vc, bool vd,
+                       char i, char c, char d) {
+
+  if (!vc && (c == 'C' || c == 'U' || c == 'D')) return 2;
+  else if (!vd && (d == 'C' || d == 'U' || d == 'D')) return 3;
+  else if (!vi && (i == 'C' || i == 'U' || i == 'D')) return 1;
+
+  return 0;
+}
 
 // Niveles del técnico
 Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
-  Action accion;
 
-   ActualizarMapa(sensores);
+ Action accion;
 
-   if (sensores.superficie[0] == 'D') zaps = true;
+  ActualizarMapa(sensores);
 
-  // Posición actual
-  ubicacion actual;
-  actual.f = sensores.posF;
-  actual.c = sensores.posC;
-  actual.brujula = sensores.rumbo;
+  if (sensores.superficie[0] == 'D') zaps = true;
 
-  ubicacion arriba_der;
-  arriba_der.f = sensores.posF;
-  arriba_der.c = sensores.posC;
-  arriba_der.brujula = sensores.rumbo;
-  arriba_der.brujula = (Orientacion)((arriba_der.brujula + 1) % 8);
+  // DETECTAR BLOQUEO
+  if (last_action == WALK &&
+      sensores.posF == last_f &&
+      sensores.posC == last_c) {
+    en_bloqueo = true;
+  }
 
-  ubicacion arriba_izq;
-  arriba_izq.f = sensores.posF;
-  arriba_izq.c = sensores.posC;
-  arriba_izq.brujula = sensores.rumbo;
-  arriba_izq.brujula = (Orientacion)((arriba_izq.brujula + 7) % 8);
- 
-cout << endl << "Casilla delante de Tecnico: " << sensores.superficie[2] << endl;
+  // FILTRAR ALTURA
+  char i = viablePorAlturaT(sensores.superficie[1],
+                           sensores.cota[1] - sensores.cota[0]);
 
-  ubicacion del = Delante(actual);
+  char c = viablePorAlturaT(sensores.superficie[2],
+                           sensores.cota[2] - sensores.cota[0]);
 
-  char i = viablePorAlturaT(sensores.superficie[1], sensores.cota[1]-sensores.cota[0]);
-  char c = viablePorAlturaT(sensores.superficie[2], sensores.cota[2]-sensores.cota[0]);
-  char d = viablePorAlturaT(sensores.superficie[3], sensores.cota[3]-sensores.cota[0]);
+  char d = viablePorAlturaT(sensores.superficie[3],
+                           sensores.cota[3] - sensores.cota[0]);
 
-  int pos = veoCasillaInteresanteT(i, c, d, zaps);
 
-  // Comprobar si es transitable y accesible
-  if (pos == 2)
-    accion = WALK;
-  else if (pos == 3){
-   accion = TURN_SR;
-  } else if (pos == 1){
-    accion = TURN_SL;
-  } else accion = TURN_SL;
+  if (sensores.superficie[0] == 'U') {
+    if (c == 'U') return WALK;
+    else if (d == 'U') return TURN_SR;
+    else if (i == 'U') return TURN_SL;
+    else{
+      contador_giros++;
+      return giro_preferido;
+    } 
+  }
 
+  // ================= BLOQUEO =================
+  if (en_bloqueo) {
+
+    if (!(last_action == WALK &&
+          sensores.posF == last_f &&
+          sensores.posC == last_c)) {
+      en_bloqueo = false;
+    }
+
+    accion = giro_preferido;
+  }
+
+  // ================= NORMAL =================
+  else {
+
+    int pos = veoCasillaInteresanteT(i, c, d, zaps);
+
+    if (pos == 2) {
+      accion = WALK;
+      giro_defecto = false;
+    }
+    else if (pos == 3) {
+      accion = TURN_SR;
+      giro_defecto = false;
+    }
+    else if (pos == 1) {
+      accion = TURN_SL;
+      giro_defecto = false;
+    }
+    else {
+      // probar ambos lados
+      if (!giro_defecto){
+        accion = giro_preferido;
+        giro_defecto = true;
+      }
+      else if (giro_preferido == TURN_SL) {
+         accion = TURN_SR;
+      } else {
+        accion = TURN_SL;
+      }
+
+      contador_giros++;
+    }
+
+    if (contador_giros >= 15) {
+      giro_preferido = (giro_preferido == TURN_SL) ? TURN_SR : TURN_SL;
+      contador_giros = 0;
+    }
+  }
+
+if (accion == WALK){
+    cont_walk++;
+    if(cont_walk >= 3){
+      if (walk_left){
+        accion = TURN_SL;
+        walk_left = false;
+      } 
+      else{
+        accion = TURN_SR;
+        walk_left = true;
+      } 
+      cont_walk = 0;
+      contador_giros++;
+    } 
+  }
+  else cont_walk = 0;
+
+  last_f = sensores.posF;
+  last_c = sensores.posC;
   last_action = accion;
 
   return accion;
@@ -120,7 +190,111 @@ bool ComportamientoTecnico::es_camino(unsigned char c) const {
  * @return Acción a realizar.
  */
 Action ComportamientoTecnico::ComportamientoTecnicoNivel_1(Sensores sensores) {
-  return IDLE;
+   Action accion;
+
+  ActualizarMapa(sensores);
+
+  if (visitado.empty() && !mapaResultado.empty()) 
+    visitado = vector<vector<bool>>(mapaResultado.size(),
+                vector<bool>(mapaResultado[0].size(), false));
+
+  if (sensores.superficie[0] == 'D') zaps = true;
+
+  visitado[sensores.posF][sensores.posC] = true;
+
+  ubicacion actual;
+  actual.f = sensores.posF;
+  actual.c = sensores.posC;
+  actual.brujula = sensores.rumbo;
+
+  if (last_action == WALK &&
+      sensores.posF == last_f &&
+      sensores.posC == last_c) {
+    en_bloqueo = true;
+  }
+
+  ubicacion delante = Delante(actual);
+
+  ubicacion izq = actual;
+  izq.brujula = (Orientacion)((actual.brujula + 7) % 8);
+  izq = Delante(izq);
+
+  ubicacion der = actual;
+  der.brujula = (Orientacion)((actual.brujula + 1) % 8);
+  der = Delante(der);
+
+  bool vi = false, vc = false, vd = false;
+
+  if (izq.f >= 0 && izq.f < visitado.size() &&
+      izq.c >= 0 && izq.c < visitado[0].size())
+    vi = visitado[izq.f][izq.c];
+
+  if (delante.f >= 0 && delante.f < visitado.size() &&
+      delante.c >= 0 && delante.c < visitado[0].size())
+    vc = visitado[delante.f][delante.c];
+
+  if (der.f >= 0 && der.f < visitado.size() &&
+      der.c >= 0 && der.c < visitado[0].size())
+    vd = visitado[der.f][der.c];
+
+  char i = viablePorAlturaT(sensores.superficie[1],
+                           sensores.cota[1] - sensores.cota[0]);
+
+  char c = viablePorAlturaT(sensores.superficie[2],
+                           sensores.cota[2] - sensores.cota[0]);
+
+  char d = viablePorAlturaT(sensores.superficie[3],
+                           sensores.cota[3] - sensores.cota[0]);
+
+  if (en_bloqueo) {
+
+    if (!(last_action == WALK &&
+          sensores.posF == last_f &&
+          sensores.posC == last_c)) {
+      en_bloqueo = false;
+    }
+
+    accion = giro_preferido;
+  }
+  else {
+
+    int pos = veoCasillaExplorarT(vi, vc, vd, i, c, d);
+
+    if (pos == 2) {
+      accion = WALK;
+    }
+    else if (pos == 3) {
+      accion = TURN_SR;
+    }
+    else if (pos == 1) {
+      accion = TURN_SL;
+    }
+    else {
+      if (giro_preferido == TURN_SL) {
+        if (i != 'P') accion = TURN_SL;
+        else if (d != 'P') accion = TURN_SR;
+        else accion = TURN_SL;
+      } else {
+        if (d != 'P') accion = TURN_SR;
+        else if (i != 'P') accion = TURN_SL;
+        else accion = TURN_SR;
+      }
+
+      contador_giros++;
+    }
+
+    if (contador_giros >= 15) {
+      giro_preferido = (giro_preferido == TURN_SL) ? TURN_SR : TURN_SL;
+      contador_giros = 0;
+    }
+  }
+
+
+  last_f = sensores.posF;
+  last_c = sensores.posC;
+  last_action = accion;
+
+  return accion;
 }
 
 /**

@@ -21,8 +21,17 @@ public:
    * @param size Tamaño del mapa (si es 0, se inicializa más tarde)
    */
   ComportamientoIngeniero(unsigned int size = 0) : Comportamiento(size) {
-    zaps = false; 
+    zaps = false;
     last_action = IDLE;
+    contador_giros = 0;
+    giro_preferido = TURN_SL;
+    last_f = -1;
+    last_c = -1;
+    en_bloqueo = false;
+    en_bloqueo_U = false;
+    walk_left = true;
+    giro_defecto = false;
+    cont_walk = 0;
   }
 
   /**
@@ -184,9 +193,18 @@ private:
   // VARIABLES DE ESTADO (PUEDEN SER EXTENDIDAS POR EL ALUMNO)
   // =========================================================================
 
-  Action last_action;
   bool zaps;
-
+  Action last_action;
+  int contador_giros;
+  int cont_walk;
+  bool walk_left;
+  Action giro_preferido;
+  int last_f;
+  int last_c;
+  bool en_bloqueo;
+  bool en_bloqueo_U;
+  bool giro_defecto;
+  vector<vector<bool>> visitado;
 
 };
 
