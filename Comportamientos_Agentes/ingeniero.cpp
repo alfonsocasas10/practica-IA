@@ -59,7 +59,7 @@ int veoCasillaInteresanteI(char i, char c, char d, bool zaps){
   if (c == 'C') return 2;
   else if (d == 'C') return 3;
   else if (i == 'C') return 1;
-  
+
   return 0;
 }
 
@@ -69,51 +69,142 @@ char viablePorAlturaI(char casilla, int dif, bool zap){
   else return 'P';
 }
 
+int veoCasillaExplorarI(bool vi, bool vc, bool vd,
+                       char i, char c, char d) {
+
+  if (!vc && (c == 'C' || c == 'U' || c == 'D')) return 2;
+  else if (!vd && (d == 'C' || d == 'U' || d == 'D')) return 3;
+  else if (!vi && (i == 'C' || i == 'U' || i == 'D')) return 1;
+
+  return 0;
+}
+
 // Niveles iniciales (Comportamientos reactivos simples)
 Action ComportamientoIngeniero::ComportamientoIngenieroNivel_0(Sensores sensores)
 {
-   Action accion;
+  Action accion;
 
-   ActualizarMapa(sensores);
+  ActualizarMapa(sensores);
 
-   if (sensores.superficie[0] == 'D') zaps = true;
+  if (sensores.superficie[0] == 'D') zaps = true;
 
-  // Posición actual
-  ubicacion actual;
-  actual.f = sensores.posF;
-  actual.c = sensores.posC;
-  actual.brujula = sensores.rumbo;
+  // DETECTAR BLOQUEO
+  if (last_action == WALK &&
+      sensores.posF == last_f &&
+      sensores.posC == last_c) {
+    en_bloqueo = true;
+  }
 
-  ubicacion arriba_der;
-  arriba_der.f = sensores.posF;
-  arriba_der.c = sensores.posC;
-  arriba_der.brujula = sensores.rumbo;
-  arriba_der.brujula = (Orientacion)((arriba_der.brujula + 1) % 8);
+  // FILTRAR ALTURA
+  char i = viablePorAlturaI(sensores.superficie[1],
+                           sensores.cota[1] - sensores.cota[0], zaps);
 
-  ubicacion arriba_izq;
-  arriba_izq.f = sensores.posF;
-  arriba_izq.c = sensores.posC;
-  arriba_izq.brujula = sensores.rumbo;
-  arriba_izq.brujula = (Orientacion)((arriba_izq.brujula + 7) % 8);
- 
-  ubicacion del = Delante(actual);
+  char c = viablePorAlturaI(sensores.superficie[2],
+                           sensores.cota[2] - sensores.cota[0], zaps);
 
-  char i = viablePorAlturaI(sensores.superficie[1], sensores.cota[1]-sensores.cota[0], zaps);
-  char c = viablePorAlturaI(sensores.superficie[2], sensores.cota[2]-sensores.cota[0], zaps);
-  char d = viablePorAlturaI(sensores.superficie[3], sensores.cota[3]-sensores.cota[0], zaps);
+  char d = viablePorAlturaI(sensores.superficie[3],
+                           sensores.cota[3] - sensores.cota[0], zaps);
+                           
+   int pos = veoCasillaInteresanteI(i, c, d, zaps);
 
-  int pos = veoCasillaInteresanteI(i, c, d, zaps);
- 
-  cout << endl << "Casilla delante de Ingeniero: " << sensores.superficie[2] << endl;
-  // Comprobar si es transitable y accesible
-  if (pos == 2)
-    accion = WALK;
-  else if (pos == 3){
-   accion = TURN_SR;
-  } else if (pos == 1){
-    accion = TURN_SL;
-  } else accion = TURN_SL;
+   if (sensores.superficie[0] == 'U') {
+    if (c == 'U') return WALK;
+    else if (d == 'U') return TURN_SR;
+    else if (i == 'U') return TURN_SL;
+    else{
+      contador_giros++;
+      return giro_preferido;
+    } 
+  }
 
+  // ================= BLOQUEO =================
+  
+  if (en_bloqueo && c == 'U'){
+    en_bloqueo_U = true;
+    contador_giros++;
+    return giro_preferido;
+  }
+
+  if (en_bloqueo_U){
+    if (pos == 2){
+      en_bloqueo_U = false;
+      return WALK;
+    } 
+    else{
+      contador_giros++;
+      return giro_preferido;
+    } 
+  }
+  
+  
+  if (en_bloqueo) {
+
+    // salir solo si realmente me he movido
+    if (!(last_action == WALK &&
+          sensores.posF == last_f &&
+          sensores.posC == last_c)) {
+      en_bloqueo = false;
+    }
+
+    accion = giro_preferido;
+  }
+
+  // ================= NORMAL =================
+  else {
+
+    if (pos == 2) {
+      accion = WALK;
+      giro_defecto = false;
+    }
+    else if (pos == 3) {
+      accion = TURN_SR;
+      giro_defecto = false;
+    }
+    else if (pos == 1) {
+      accion = TURN_SL;
+      giro_defecto = false;
+    }
+    else {
+      // probar ambos lados
+      if (!giro_defecto){
+        accion = giro_preferido;
+        giro_defecto = true;
+      }
+      else if (giro_preferido == TURN_SL) {
+         accion = TURN_SR;
+      } else {
+        accion = TURN_SL;
+      }
+
+      contador_giros++;
+    }
+
+    // romper ciclos
+    if (contador_giros >= 15) {
+      giro_preferido = (giro_preferido == TURN_SL) ? TURN_SR : TURN_SL;
+      contador_giros = 0;
+    }
+  }
+
+  if (accion == WALK){
+    cont_walk++;
+    if(cont_walk >= 3){
+      if (walk_left){
+        accion = TURN_SL;
+        walk_left = false;
+      } 
+      else{
+        accion = TURN_SR;
+        walk_left = true;
+      } 
+      cont_walk = 0;
+      contador_giros++;
+    } 
+  }
+  else cont_walk = 0;
+
+  last_f = sensores.posF;
+  last_c = sensores.posC;
   last_action = accion;
 
   return accion;
@@ -136,28 +227,117 @@ bool ComportamientoIngeniero::es_camino(unsigned char c) const
  */
 Action ComportamientoIngeniero::ComportamientoIngenieroNivel_1(Sensores sensores)
 {
-  Action accion = IDLE;
+  Action accion;
 
-  unsigned char delante = sensores.superficie[2];
-  unsigned char izq = sensores.superficie[1];
-  unsigned char der = sensores.superficie[3];
+  ActualizarMapa(sensores);
 
-  if (es_camino(delante))
-  {
-    accion = WALK;
+  if (visitado.empty() && !mapaResultado.empty()) 
+    visitado = vector<vector<bool>>(mapaResultado.size(),
+                vector<bool>(mapaResultado[0].size(), false));
+
+  if (sensores.superficie[0] == 'D') zaps = true;
+
+  visitado[sensores.posF][sensores.posC] = true;
+
+  // POSICIÓN ACTUAL
+  ubicacion actual;
+  actual.f = sensores.posF;
+  actual.c = sensores.posC;
+  actual.brujula = sensores.rumbo;
+
+  // DETECTAR BLOQUEO
+  if (last_action == WALK &&
+      sensores.posF == last_f &&
+      sensores.posC == last_c) {
+    en_bloqueo = true;
   }
-  else if (es_camino(izq))
-  {
-    accion = TURN_SL;
+
+  // CALCULAR CASILLAS
+  ubicacion delante = Delante(actual);
+
+  ubicacion izq = actual;
+  izq.brujula = (Orientacion)((actual.brujula + 7) % 8);
+  izq = Delante(izq);
+
+  ubicacion der = actual;
+  der.brujula = (Orientacion)((actual.brujula + 1) % 8);
+  der = Delante(der);
+
+  // VISITADO
+  bool vi = false, vc = false, vd = false;
+
+  if (izq.f >= 0 && izq.f < visitado.size() &&
+      izq.c >= 0 && izq.c < visitado[0].size())
+    vi = visitado[izq.f][izq.c];
+
+  if (delante.f >= 0 && delante.f < visitado.size() &&
+      delante.c >= 0 && delante.c < visitado[0].size())
+    vc = visitado[delante.f][delante.c];
+
+  if (der.f >= 0 && der.f < visitado.size() &&
+      der.c >= 0 && der.c < visitado[0].size())
+    vd = visitado[der.f][der.c];
+
+  // FILTRAR ALTURA
+  char i = viablePorAlturaI(sensores.superficie[1],
+                           sensores.cota[1] - sensores.cota[0], zaps);
+
+  char c = viablePorAlturaI(sensores.superficie[2],
+                           sensores.cota[2] - sensores.cota[0], zaps);
+
+  char d = viablePorAlturaI(sensores.superficie[3],
+                           sensores.cota[3] - sensores.cota[0], zaps);
+
+  // ================= BLOQUEO =================
+  if (en_bloqueo) {
+
+    if (!(last_action == WALK &&
+          sensores.posF == last_f &&
+          sensores.posC == last_c)) {
+      en_bloqueo = false;
+    }
+
+    accion = giro_preferido;
   }
-  else if (es_camino(der))
-  {
-    accion = TURN_SR;
+
+  // ================= NORMAL =================
+  else {
+
+    int pos = veoCasillaExplorarI(vi, vc, vd, i, c, d);
+
+    if (pos == 2) {
+      accion = WALK;
+    }
+    else if (pos == 3) {
+      accion = TURN_SR;
+    }
+    else if (pos == 1) {
+      accion = TURN_SL;
+    }
+    else {
+      // fallback nivel 0 mejorado
+      if (giro_preferido == TURN_SL) {
+        if (i != 'P') accion = TURN_SL;
+        else if (d != 'P') accion = TURN_SR;
+        else accion = TURN_SL;
+      } else {
+        if (d != 'P') accion = TURN_SR;
+        else if (i != 'P') accion = TURN_SL;
+        else accion = TURN_SR;
+      }
+
+      contador_giros++;
+    }
+
+    if (contador_giros >= 5) {
+      giro_preferido = (giro_preferido == TURN_SL) ? TURN_SR : TURN_SL;
+      contador_giros = 0;
+    }
   }
-  else
-  {
-    accion = TURN_SR; // gira hasta encontrar salida
-  }
+
+  last_f = sensores.posF;
+  last_c = sensores.posC;
+  last_action = accion;
 
   return accion;
 }
