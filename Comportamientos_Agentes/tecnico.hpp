@@ -39,6 +39,7 @@ public:
     last_f = -1;
     last_c = -1;
     en_bloqueo = false;
+    en_bloqueo_U = false;
     walk_left = true;
     giro_defecto = false;
     cont_walk = 0;
@@ -206,8 +207,10 @@ private:
   int last_f;
   int last_c;
   bool en_bloqueo;
+  bool en_bloqueo_U;
   bool giro_defecto;
   vector<vector<bool>> visitado;
+  vector<vector<int>> visitas;
     
 };
 

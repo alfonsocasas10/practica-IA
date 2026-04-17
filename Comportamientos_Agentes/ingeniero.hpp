@@ -205,6 +205,7 @@ private:
   bool en_bloqueo_U;
   bool giro_defecto;
   vector<vector<bool>> visitado;
+  vector<vector<int>> visitas;
 
 };
 
