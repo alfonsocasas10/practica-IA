@@ -48,46 +48,34 @@ int ComportamientoTecnico::veoCasillaInteresanteT0(char i, char c, char d, bool 
 }
 
 int ComportamientoTecnico::veoCasillaInteresanteT1(char i, char c, char d, bool zaps){
-
-
-  // Para cuando las zapatillas tengan importancia
-  /*if (!zaps){
+  // En el caso del tecnico he preferido ser mas conservador y no dejar que entre al agua ni a la hierba,
+  // para hacer un equilibrio entre energía y mapa investigado.
+  if (!zaps){
     if (c == 'D') return 2;
     else if (d == 'D') return 3;
     else if (i == 'D') return 1;
-  } */
-  if (es_camino(c)) return 2;
-  else if (es_camino(d)) return 3;
-  else if (es_camino(i)) return 1;
+  } 
+  if (c == 'C') return 2;
+  else if (d == 'C') return 3;
+  else if (i == 'C') return 1;
+  else if (c == 'U') return 2;
+  else if (d == 'U') return 3;
+  else if (i == 'U') return 1;
   else if (c == 'S') return 2;
   else if (d == 'S') return 3;
   else if (i == 'S') return 1;
   else if (c == 'H') return 2;
   else if (d == 'H') return 3;
   else if (i == 'H') return 1;
-  else if (c == 'A') return 2;
-  else if (d == 'A') return 3;
-  else if (i == 'A') return 1;
-
 
   return 0;
 }
 
 char ComportamientoTecnico::viablePorAlturaT(char casilla, int dif){
-
   if (abs(dif) <= 1) return casilla;
   else return 'P';
 }
 
-int ComportamientoTecnico::veoCasillaExplorarT(bool vi, bool vc, bool vd,
-                       char i, char c, char d) {
-
-  if (!vc && (c == 'C' || c == 'U' || c == 'D')) return 2;
-  else if (!vd && (d == 'C' || d == 'U' || d == 'D')) return 3;
-  else if (!vi && (i == 'C' || i == 'U' || i == 'D')) return 1;
-
-  return 0;
-}
 
 // Niveles del técnico
 Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
@@ -98,13 +86,14 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
 
   if (sensores.superficie[0] == 'D') zaps = true;
 
-  // 1. Inicializar la matriz la primera vez y sumar 1 a la casilla actual
+  // Inicializo matriz que cuenta las veces que pasa por una casilla
   if (visitas.empty()) {
       visitas.assign(mapaResultado.size(), vector<int>(mapaResultado[0].size(), 0));
   }
+  // +1 en nuestra posicion
   visitas[sensores.posF][sensores.posC]++;
 
-  // 2. Calcular las coordenadas de Frente, Izquierda y Derecha
+  // Calulamos coordenadas de las posciones 1, 2 ,3 (i, c, d)
   ubicacion actual = {sensores.posF, sensores.posC, sensores.rumbo};
   ubicacion pos_frente = Delante(actual);
   
@@ -116,7 +105,7 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
   aux_der.brujula = (Orientacion)(((int)aux_der.brujula + 1) % 8);
   ubicacion pos_der = Delante(aux_der);
 
-  // DETECTAR BLOQUEO
+  // Detecta si hay bloqueo y gira, mientras activa el bool de bloqueado
   if (last_action == WALK &&
       sensores.posF == last_f &&
       sensores.posC == last_c) {
@@ -125,7 +114,7 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
     return giro_preferido;
   }
 
-  // FILTRAR ALTURA
+  // Vemos qué opciones tienen altura correcta
   char i = viablePorAlturaT(sensores.superficie[1],
                            sensores.cota[1] - sensores.cota[0]);
 
@@ -135,9 +124,11 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
   char d = viablePorAlturaT(sensores.superficie[3],
                            sensores.cota[3] - sensores.cota[0]);
                            
-   int pos = veoCasillaInteresanteT0(i, c, d, zaps);
-
-   if (sensores.superficie[0] == 'U') {
+  // Nos quedamos con la posicion de la casilla que más nos interese
+  int pos = veoCasillaInteresanteT0(i, c, d, zaps);
+  
+  // Si estamos en U, solo avanzamos en caso de tener otra U en un paso, sino nos mantenemos
+  if (sensores.superficie[0] == 'U') {
     if (c == 'U') return WALK;
     else if (d == 'U') return TURN_SR;
     else if (i == 'U') return TURN_SL;
@@ -146,15 +137,16 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
     } 
   }
 
-  // ================= BLOQUEO =================
-  
+  // Tratamos el bloqueo (creado para colisiones con ingeniero en U)
   if (en_bloqueo && c == 'U'){
+    en_bloqueo = false;
     en_bloqueo_U = true;
     contador_giros++;
     last_action = giro_preferido;
     return giro_preferido;
   }
 
+  // Tratamos el bloqueo con el ingeniero
   if (en_bloqueo_U){
     if (pos == 2){
       en_bloqueo_U = false;
@@ -168,7 +160,7 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
     return accion;
   }
   
-  
+  // Llegados a este caso, era un bloqueo con un muro o ingeniero
   if (en_bloqueo) {
 
     if (pos == 2){
@@ -179,9 +171,9 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
     last_action = accion;
     return accion;
   }
-    // ================= NORMAL =================
+  // Si llegamos aquí, no hay bloqueos
   else {
-    // 1. Si hay una 'U' a la vista, ignoramos la memoria y vamos a por ella
+    // Si hay una U vamos a por ella
     if (c == 'U') {
       accion = WALK;
       giro_defecto = false;
@@ -194,14 +186,14 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
       accion = TURN_SL;
       giro_defecto = false;
     }
-    // 2. SISTEMA DE MEMORIA (Solo entra si no hay 'U')
+    // En caso de estar en un bucle, esta es una forma de usar la memoria para salir de dicho bucle por otro camino
     else if (es_camino(sensores.superficie[1]) && (i != 'P') && visitas[pos_izq.f][pos_izq.c] < visitas[pos_frente.f][pos_frente.c]) {
       accion = TURN_SL;
     }
     else if (es_camino(sensores.superficie[3]) && (d != 'P') && visitas[pos_der.f][pos_der.c] < visitas[pos_frente.f][pos_frente.c]) {
       accion = TURN_SR;
     }
-    // 3. MOVIMIENTO NORMAL (Si no hay 'U' y la memoria no pide girar)
+    // Llegados aquí simplemente tomamos la posicion que más nos hubiese interesasdo antes (1-i, 2-c, 3-d, 0-ninguna)
     else if (pos == 2) {
       accion = WALK;
       giro_defecto = false;
@@ -214,9 +206,10 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
       accion = TURN_SL;
       giro_defecto = false;
     }
-    // 4. BLOQUEO / ROTACIÓN POR DEFECTO
+    // Llegados aquí, estamos sin salidas, luego tenemos que girar para buscar más caminos
     else {
-      // probar ambos lados
+      // Esto es para que primero gire para un lado, y si no hay salidas significa que por ese lado no había camino, y en ese punto giramos 
+      // por completo hacia el otro por si habia un camino justo en ese lado. Sino hubiese, terminaría de dar la vuelta porque la salida estabaa detras
       if (!giro_defecto){
         accion = giro_preferido;
         giro_defecto = true;
@@ -230,13 +223,14 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
       contador_giros++;
     }
 
-    // romper ciclos
+    // Variar giros, que no sea monótono el movimiento del agente durante toda la simulacion
     if (contador_giros >= 15) {
       giro_preferido = (giro_preferido == TURN_SL) ? TURN_SR : TURN_SL;
       contador_giros = 0;
     }
   }
 
+  // Además, tras andar 5 veces, girará hacia un lado. Esto se hace para romper posibles bucles también.
   if (accion == WALK){
     cont_walk++;
     if(cont_walk >= 5){
@@ -271,7 +265,7 @@ bool ComportamientoTecnico::es_camino(unsigned char c) const {
 }
 
 bool ComportamientoTecnico::es_camino1(unsigned char c) const {
-  return (c == 'C' || c == 'D' || c == 'U' || c == 'H' || c == 'S' || c == 'A');
+  return (c == 'C' || c == 'D' || c == 'U' || c == 'S' || c == 'H');
 }
 
 
@@ -329,7 +323,7 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_1(Sensores sensores) {
   // ================= BLOQUEO =================
   
   if (en_bloqueo) {
-    if (es_camino1(sensores.superficie[2]) && sensores.superficie[2] == c){
+    if (sensores.superficie[2] != 'D' && es_camino1(sensores.superficie[2]) && sensores.superficie[2] == c){
       en_bloqueo = false;
       accion = WALK;
     } 
@@ -339,11 +333,14 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_1(Sensores sensores) {
   }
     // ================= NORMAL =================
   else {
-    if (es_camino1(sensores.superficie[1]) && (i != 'P') && visitas[pos_izq.f][pos_izq.c] < visitas[pos_frente.f][pos_frente.c]) {
+    if (es_camino1(sensores.superficie[1]) && (i != 'A') && (i != 'P') && visitas[pos_izq.f][pos_izq.c] < visitas[pos_frente.f][pos_frente.c]) {
       accion = TURN_SL;
     }
-    else if (es_camino1(sensores.superficie[3]) && (d != 'P') && visitas[pos_der.f][pos_der.c] < visitas[pos_frente.f][pos_frente.c]) {
+    else if (es_camino1(sensores.superficie[3]) && (i != 'A') && (d != 'P') && visitas[pos_der.f][pos_der.c] < visitas[pos_frente.f][pos_frente.c]) {
       accion = TURN_SR;
+    }
+     else if (es_camino1(sensores.superficie[2]) && (i != 'A') && (c != 'P') && sensores.superficie[2] == c) {
+      accion = WALK;
     }
     // 3. MOVIMIENTO NORMAL (Si no hay 'U' y la memoria no pide girar)
     else if (pos == 2) {
@@ -360,7 +357,6 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_1(Sensores sensores) {
     }
     // 4. BLOQUEO / ROTACIÓN POR DEFECTO
     else {
-      cout << pos << " " << c << " " << sensores.cota[2] << " " << sensores.cota[0];
       // probar ambos lados
       if (!giro_defecto){
         accion = giro_preferido;
@@ -384,7 +380,7 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_1(Sensores sensores) {
 
   if (accion == WALK){
     cont_walk++;
-    if(cont_walk >= 5){
+    if(cont_walk >= 4){
       if (walk_left){
         accion = TURN_SL;
         walk_left = false;

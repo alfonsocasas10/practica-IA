@@ -155,17 +155,52 @@ protected:
    */
   ubicacion Delante(const ubicacion &actual) const;
 
+  /**
+   * @brief Comprueba si una celda es de tipo transitable por defecto (nivel 0).
+   * @param c Carácter que representa el tipo de superficie.
+   * @return true si es camino ('C'), zapatillas ('D') o meta ('U').
+   */
   bool es_camino(unsigned char c) const;
 
+  // MIS FUNCIONES
+
+  /**
+   * @brief Devuelve verdadero si la casilla es transitable (nivel 1, a excepción de hierba y de agua).
+   * @param c La casilla.
+   * @return Verdadero si la casilla es transitable (nivel 1).
+   */
   bool es_camino1(unsigned char c) const;
 
+  /**
+   * @brief Devuelve la direccion en la que se encuentra la casilla con mas prioridad (nivel 0).
+   * @param i La casilla de arriba-izq.
+   * @param c La casilla de delante.
+   * @param i La casilla de arriba-der.
+   * @param zaps Si el agente tiene zapatillas o no.
+   * @return 1 si es arriba-izq, 2 si es centro, 3 si es arriba-der, 0 si no son transitables.
+   */
   int veoCasillaInteresanteI0(char i, char c, char d, bool zaps);
 
-int veoCasillaInteresanteI1(char i, char c, char d, bool zaps);
+  /**
+   * @brief Devuelve la direccion en la que se encuentra la casilla con mas prioridad (nivel 1).
+   * @param i La casilla de arriba-izq.
+   * @param c La casilla de delante.
+   * @param i La casilla de arriba-der.
+   * @param zaps Si el agente tiene zapatillas o no.
+   * @return 1 si es arriba-izq, 2 si es centro, 3 si es arriba-der, 0 si no son transitables.
+   */
+  int veoCasillaInteresanteI1(char i, char c, char d, bool zaps);
 
-char viablePorAlturaI(char casilla, int dif, bool zap);
+  /**
+   * @brief Devuelve la casilla si está a una altura adecuada, y devuelve 'P' si no.
+   * @param casilla La casilla a evaluar.
+   * @param dif La diferencia de altura entre mi casilla actual y la evaluada.
+   * @param zap Si el agente tiene zapatillas o no.
+   * @return La casilla si está a una altura adecuada, y devuelve 'P' si no.
+   */
+  char viablePorAlturaI(char casilla, int dif, bool zap);
 
-int veoCasillaExplorarI(bool vi, bool vc, bool vd, char i, char c, char d);
+  // FIN MIS FUNCIONES
 
   /**
  * @brief Imprime por consola la secuencia de acciones de un plan para un agente.
@@ -218,7 +253,6 @@ private:
   bool en_bloqueo_J;
   bool en_bloqueo_U;
   bool giro_defecto;
-  vector<vector<bool>> visitado;
   vector<vector<int>> visitas;
 
 };
