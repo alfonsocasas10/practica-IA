@@ -354,13 +354,14 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_1(Sensores sensores
 
   if (sensores.superficie[0] == 'D') zaps = true;
 
-  // 1. Inicializar la matriz la primera vez y sumar 1 a la casilla actual
+  // Inicializo matriz que cuenta las veces que pasa por una casilla
   if (visitas.empty()) {
       visitas.assign(mapaResultado.size(), vector<int>(mapaResultado[0].size(), 0));
   }
+  // +1 en nuestra posicion
   visitas[sensores.posF][sensores.posC]++;
 
-  // 2. Calcular las coordenadas de Frente, Izquierda y Derecha
+  // Calulamos coordenadas de las posciones 1, 2 ,3 (i, c, d)
   ubicacion actual = {sensores.posF, sensores.posC, sensores.rumbo};
   ubicacion pos_frente = Delante(actual);
   
@@ -372,7 +373,7 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_1(Sensores sensores
   aux_der.brujula = (Orientacion)(((int)aux_der.brujula + 1) % 8);
   ubicacion pos_der = Delante(aux_der);
 
-  // DETECTAR BLOQUEO
+  // Detectamos bloqueo por andar
   if ((last_action == WALK) &&
       sensores.posF == last_f &&
       sensores.posC == last_c) {
@@ -381,7 +382,7 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_1(Sensores sensores
     return giro_preferido;
   }
 
-  // DETECTAR BLOQUEO
+  // Detectamos bloqueo por saltar
   if ((last_action == JUMP) &&
       sensores.posF == last_f &&
       sensores.posC == last_c) {
@@ -390,7 +391,7 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_1(Sensores sensores
     return giro_preferido;
   }
 
-  // FILTRAR ALTURA
+  // Vemos si las alturas son correctas o no podemos acceder a alguna direccion
   char i = viablePorAlturaI(sensores.superficie[1],
                            sensores.cota[1] - sensores.cota[0], zaps);
 
@@ -399,11 +400,11 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_1(Sensores sensores
 
   char d = viablePorAlturaI(sensores.superficie[3],
                            sensores.cota[3] - sensores.cota[0], zaps);
-                           
+    
+  // Nos quedamos con la casilla que más nos interese
   int pos = veoCasillaInteresanteI1(i, c, d, zaps);
 
- // ================= BLOQUEO =================
-
+ // Gestionamos los bloqueos
   if (en_bloqueo) {
     if (es_camino1(sensores.superficie[2]) && sensores.superficie[2] == c){
       en_bloqueo = false;
@@ -427,70 +428,64 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_1(Sensores sensores
     last_action = accion;
     return accion;
   }
-  // --- LÓGICA DE SALTO ---
-  // Si la meta 'U' está a dos casillas (pos 6) y podemos saltar con seguridad
-  
-    // ================= NORMAL =================
-  
-    // 1. Si hay una 'U' a la vista, ignoramos la memoria y vamos a por ella
-    if (es_camino1(sensores.superficie[1]) && (i != 'P') && (i != 'A') && visitas[pos_izq.f][pos_izq.c] < visitas[pos_frente.f][pos_frente.c]) {
-      accion = TURN_SL;
-      
-    }
-    else if (es_camino1(sensores.superficie[3]) && (d != 'A') && (d != 'P') && visitas[pos_der.f][pos_der.c] < visitas[pos_frente.f][pos_frente.c]) {
-      accion = TURN_SR;
-      
-    }
-    else if (es_camino1(sensores.superficie[2]) && (c != 'A') && (c != 'P') && sensores.superficie[2] == c) {
-      accion = WALK;
-      
-    }
-    // 3. MOVIMIENTO NORMAL (Si no hay 'U' y la memoria no pide girar)
-    else if (pos == 2) {
-      accion = WALK;
-      giro_defecto = false;
-      
-    }
-    else if (pos == 3) {
-      accion = TURN_SR;
-      giro_defecto = false;
-      
-    }
-    else if (pos == 1) {
-      accion = TURN_SL;
-      giro_defecto = false;
+  // En este punto no hay bloqueos, y priorizamos las zonas menos visitadas para investigar nuevos caminos
+  if (es_camino1(sensores.superficie[1]) && (i != 'P') && visitas[pos_izq.f][pos_izq.c] < visitas[pos_frente.f][pos_frente.c]) {
+    accion = TURN_SL;
     
-    }
-    else if (puedeSaltarI(sensores, zaps) && (pos == 0)) { 
-    accion = JUMP;
+  }
+  else if (es_camino1(sensores.superficie[3]) && (d != 'P') && visitas[pos_der.f][pos_der.c] < visitas[pos_frente.f][pos_frente.c]) {
+    accion = TURN_SR;
+    
+  }
+  else if (es_camino1(sensores.superficie[2]) && (d != 'P') && sensores.superficie[2] == c) {
+    accion = WALK;
+    
+  }
+  // Llegados aquí, optamos por la casilla que más nos convenga elegida anteriormente
+  else if (pos == 2) {
+    accion = WALK;
     giro_defecto = false;
-   
-    }
-    // 4. BLOQUEO / ROTACIÓN POR DEFECTO
-    else {
-      // probar ambos lados
-
-      if (!giro_defecto){
-        accion = giro_preferido;
-        giro_defecto = true;
-      }
-      else if (giro_preferido == TURN_SL) {
-         accion = TURN_SR;
-      } else {
-        accion = TURN_SL;
-      }
-
-      contador_giros++;
-    }
-
-
-    // romper ciclos
-    if (contador_giros >= 15) {
-      giro_preferido = (giro_preferido == TURN_SL) ? TURN_SR : TURN_SL;
-      contador_giros = 0;
-    }
+    
+  }
+  else if (pos == 3) {
+    accion = TURN_SR;
+    giro_defecto = false;
+    
+  }
+  else if (pos == 1) {
+    accion = TURN_SL;
+    giro_defecto = false;
   
+  }
+  // Aquí estamos sin salidas, si podemos saltar, saltamos
+  else if (puedeSaltarI(sensores, zaps) && (pos == 0)) { 
+  accion = JUMP;
+  giro_defecto = false;
+  
+  }
+  // Si no podemos saltar, giramos hasta encontrar salida
+  else {
+    if (!giro_defecto){
+      accion = giro_preferido;
+      giro_defecto = true;
+    }
+    else if (giro_preferido == TURN_SL) {
+        accion = TURN_SR;
+    } else {
+      accion = TURN_SL;
+    }
 
+    contador_giros++;
+  }
+
+
+  // Rompemos ciclos
+  if (contador_giros >= 15) {
+    giro_preferido = (giro_preferido == TURN_SL) ? TURN_SR : TURN_SL;
+    contador_giros = 0;
+  }
+
+  // Tambien para romper ciclos
   if (accion == WALK){
     cont_walk++;
     if(cont_walk >= 4){

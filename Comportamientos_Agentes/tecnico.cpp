@@ -187,10 +187,10 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
       giro_defecto = false;
     }
     // En caso de estar en un bucle, esta es una forma de usar la memoria para salir de dicho bucle por otro camino
-    else if (es_camino(sensores.superficie[1]) && (i != 'P') && visitas[pos_izq.f][pos_izq.c] < visitas[pos_frente.f][pos_frente.c]) {
+    else if (es_camino1(sensores.superficie[1]) && (i != 'P') && visitas[pos_izq.f][pos_izq.c] < visitas[pos_frente.f][pos_frente.c]) {
       accion = TURN_SL;
     }
-    else if (es_camino(sensores.superficie[3]) && (d != 'P') && visitas[pos_der.f][pos_der.c] < visitas[pos_frente.f][pos_frente.c]) {
+    else if (es_camino1(sensores.superficie[3]) && (d != 'P') && visitas[pos_der.f][pos_der.c] < visitas[pos_frente.f][pos_frente.c]) {
       accion = TURN_SR;
     }
     // Llegados aquí simplemente tomamos la posicion que más nos hubiese interesasdo antes (1-i, 2-c, 3-d, 0-ninguna)
@@ -281,13 +281,14 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_1(Sensores sensores) {
 
   if (sensores.superficie[0] == 'D') zaps = true;
 
-  // 1. Inicializar la matriz la primera vez y sumar 1 a la casilla actual
+  // Inicializo matriz que cuenta las veces que pasa por una casilla
   if (visitas.empty()) {
       visitas.assign(mapaResultado.size(), vector<int>(mapaResultado[0].size(), 0));
   }
+  // +1 en nuestra posicion
   visitas[sensores.posF][sensores.posC]++;
 
-  // 2. Calcular las coordenadas de Frente, Izquierda y Derecha
+  // Calulamos coordenadas de las posciones 1, 2 ,3 (i, c, d)
   ubicacion actual = {sensores.posF, sensores.posC, sensores.rumbo};
   ubicacion pos_frente = Delante(actual);
   
@@ -299,7 +300,7 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_1(Sensores sensores) {
   aux_der.brujula = (Orientacion)(((int)aux_der.brujula + 1) % 8);
   ubicacion pos_der = Delante(aux_der);
 
-  // DETECTAR BLOQUEO
+  // Detecta si hay bloqueo
   if (last_action == WALK &&
       sensores.posF == last_f &&
       sensores.posC == last_c) {
@@ -308,7 +309,7 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_1(Sensores sensores) {
     return giro_preferido;
   }
 
-  // FILTRAR ALTURA
+  // Comprobamos alturas
   char i = viablePorAlturaT(sensores.superficie[1],
                            sensores.cota[1] - sensores.cota[0]);
 
@@ -320,8 +321,7 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_1(Sensores sensores) {
                            
   int pos = veoCasillaInteresanteT1(i, c, d, zaps);
 
-  // ================= BLOQUEO =================
-  
+  // Tratamos bloqueo
   if (en_bloqueo) {
     if (sensores.superficie[2] != 'D' && es_camino1(sensores.superficie[2]) && sensores.superficie[2] == c){
       en_bloqueo = false;
@@ -331,7 +331,7 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_1(Sensores sensores) {
     last_action = accion;
     return accion;
   }
-    // ================= NORMAL =================
+   // Aquí ya no hay bloqueo, priorizamos zonas menos visitadas (aunque le permita entrar al agua, no quiero que sea por ser menos visitado).
   else {
     if (es_camino1(sensores.superficie[1]) && (i != 'A') && (i != 'P') && visitas[pos_izq.f][pos_izq.c] < visitas[pos_frente.f][pos_frente.c]) {
       accion = TURN_SL;
@@ -342,7 +342,7 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_1(Sensores sensores) {
      else if (es_camino1(sensores.superficie[2]) && (i != 'A') && (c != 'P') && sensores.superficie[2] == c) {
       accion = WALK;
     }
-    // 3. MOVIMIENTO NORMAL (Si no hay 'U' y la memoria no pide girar)
+    // Llegados a este caso, optamos por la posicion anteriormente escogida
     else if (pos == 2) {
       accion = WALK;
       giro_defecto = false;
@@ -355,9 +355,8 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_1(Sensores sensores) {
       accion = TURN_SL;
       giro_defecto = false;
     }
-    // 4. BLOQUEO / ROTACIÓN POR DEFECTO
+    // Estamos sin salida, luego tenemos que girar hasta poder avanzar de nuevo
     else {
-      // probar ambos lados
       if (!giro_defecto){
         accion = giro_preferido;
         giro_defecto = true;
@@ -371,13 +370,14 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_1(Sensores sensores) {
       contador_giros++;
     }
 
-    // romper ciclos
+    // Sirve para variar los giros, y permite romper ciertos ciclos
     if (contador_giros >= 15) {
       giro_preferido = (giro_preferido == TURN_SL) ? TURN_SR : TURN_SL;
       contador_giros = 0;
     }
   }
 
+  // Es otra forma de romper ciclos
   if (accion == WALK){
     cont_walk++;
     if(cont_walk >= 4){
