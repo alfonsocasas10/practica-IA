@@ -165,22 +165,51 @@ protected:
   ubicacion Delante(const ubicacion &actual) const;
 
   /**
-   * @brief Comprueba si una celda es de tipo transitable por defecto.
+   * @brief Comprueba si una celda es de tipo transitable por defecto (nivel 0).
    * @param c Carácter que representa el tipo de superficie.
    * @return true si es camino ('C'), zapatillas ('D') o meta ('U').
    */
   bool es_camino(unsigned char c) const;
 
+  // MIS FUNCIONES 
+
+  /**
+   * @brief Devuelve verdadero si la casilla es transitable (nivel 1, a excepción agua).
+   * @param c La casilla.
+   * @return Verdadero si la casilla es transitable (nivel 1).
+   */
   bool es_camino1(unsigned char c) const;
 
   
-int veoCasillaInteresanteT0(char i, char c, char d, bool zaps);
+ /**
+   * @brief Devuelve la direccion en la que se encuentra la casilla con mas prioridad (nivel 0).
+   * @param i La casilla de arriba-izq.
+   * @param c La casilla de delante.
+   * @param i La casilla de arriba-der.
+   * @param zaps Si el agente tiene zapatillas o no.
+   * @return 1 si es arriba-izq, 2 si es centro, 3 si es arriba-der, 0 si no son transitables.
+  */
+  int veoCasillaInteresanteT0(char i, char c, char d, bool zaps);
 
-int veoCasillaInteresanteT1(char i, char c, char d, bool zaps);
+  /**
+   * @brief Devuelve la direccion en la que se encuentra la casilla con mas prioridad (nivel 1).
+   * @param i La casilla de arriba-izq.
+   * @param c La casilla de delante.
+   * @param i La casilla de arriba-der.
+   * @param zaps Si el agente tiene zapatillas o no.
+   * @return 1 si es arriba-izq, 2 si es centro, 3 si es arriba-der, 0 si no son transitables.
+   */
+  int veoCasillaInteresanteT1(char i, char c, char d, bool zaps);
+  
+  /**
+   * @brief Devuelve la casilla si está a una altura adecuada, y devuelve 'P' si no.
+   * @param casilla La casilla a evaluar.
+   * @param dif La diferencia de altura entre mi casilla actual y la evaluada.
+   * @return La casilla si está a una altura adecuada, y devuelve 'P' si no.
+   */
+  char viablePorAlturaT(char casilla, int dif);
 
-char viablePorAlturaT(char casilla, int dif);
-
-int veoCasillaExplorarT(bool vi, bool vc, bool vd, char i, char c, char d);
+  int veoCasillaExplorarT(bool vi, bool vc, bool vd, char i, char c, char d);
 
     /**
  * @brief Imprime por consola la secuencia de acciones de un plan para un agente.
@@ -188,6 +217,7 @@ int veoCasillaExplorarT(bool vi, bool vc, bool vd, char i, char c, char d);
  */
   void PintaPlan(const list<Action> &plan);
 
+// FIN MIS FUNCIONES
 
 /**
  * @brief Imprime las coordenadas y operaciones de un plan de tubería.
@@ -220,7 +250,6 @@ private:
   bool en_bloqueo;
   bool en_bloqueo_U;
   bool giro_defecto;
-  vector<vector<bool>> visitado;
   vector<vector<int>> visitas;
     
 };
