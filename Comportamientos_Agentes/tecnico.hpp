@@ -171,6 +171,17 @@ protected:
    */
   bool es_camino(unsigned char c) const;
 
+  bool es_camino1(unsigned char c) const;
+
+  
+int veoCasillaInteresanteT0(char i, char c, char d, bool zaps);
+
+int veoCasillaInteresanteT1(char i, char c, char d, bool zaps);
+
+char viablePorAlturaT(char casilla, int dif);
+
+int veoCasillaExplorarT(bool vi, bool vc, bool vd, char i, char c, char d);
+
     /**
  * @brief Imprime por consola la secuencia de acciones de un plan para un agente.
  * @param plan  Lista de acciones del plan.

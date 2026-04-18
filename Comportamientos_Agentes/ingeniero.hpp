@@ -28,6 +28,7 @@ public:
     last_f = -1;
     last_c = -1;
     en_bloqueo = false;
+    en_bloqueo_J = false;
     en_bloqueo_U = false;
     walk_left = true;
     giro_defecto = false;
@@ -156,6 +157,16 @@ protected:
 
   bool es_camino(unsigned char c) const;
 
+  bool es_camino1(unsigned char c) const;
+
+  int veoCasillaInteresanteI0(char i, char c, char d, bool zaps);
+
+int veoCasillaInteresanteI1(char i, char c, char d, bool zaps);
+
+char viablePorAlturaI(char casilla, int dif, bool zap);
+
+int veoCasillaExplorarI(bool vi, bool vc, bool vd, char i, char c, char d);
+
   /**
  * @brief Imprime por consola la secuencia de acciones de un plan para un agente.
  * @param plan  Lista de acciones del plan.
@@ -186,6 +197,8 @@ protected:
  */
   void VisualizaRedTuberias(const list<Paso> &plan);
 
+  bool puedeSaltarI(const Sensores &sensores, bool tiene_zaps);
+
 
 
 private:
@@ -202,6 +215,7 @@ private:
   int last_f;
   int last_c;
   bool en_bloqueo;
+  bool en_bloqueo_J;
   bool en_bloqueo_U;
   bool giro_defecto;
   vector<vector<bool>> visitado;
