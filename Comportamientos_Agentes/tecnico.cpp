@@ -187,10 +187,10 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_0(Sensores sensores) {
       giro_defecto = false;
     }
     // En caso de estar en un bucle, esta es una forma de usar la memoria para salir de dicho bucle por otro camino
-    else if (es_camino1(sensores.superficie[1]) && (i != 'P') && visitas[pos_izq.f][pos_izq.c] < visitas[pos_frente.f][pos_frente.c]) {
+    else if (es_camino0(sensores.superficie[1]) && (i != 'P') && visitas[pos_izq.f][pos_izq.c] < visitas[pos_frente.f][pos_frente.c]) {
       accion = TURN_SL;
     }
-    else if (es_camino1(sensores.superficie[3]) && (d != 'P') && visitas[pos_der.f][pos_der.c] < visitas[pos_frente.f][pos_frente.c]) {
+    else if (es_camino0(sensores.superficie[3]) && (d != 'P') && visitas[pos_der.f][pos_der.c] < visitas[pos_frente.f][pos_frente.c]) {
       accion = TURN_SR;
     }
     // Llegados aquí simplemente tomamos la posicion que más nos hubiese interesasdo antes (1-i, 2-c, 3-d, 0-ninguna)
