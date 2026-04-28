@@ -43,6 +43,10 @@ public:
     walk_left = true;
     giro_defecto = false;
     cont_walk = 0;
+
+    //Nivel E
+    hay_plan = false;
+
   }
 
   /**
@@ -53,7 +57,20 @@ public:
   ComportamientoTecnico(std::vector<std::vector<unsigned char>> mapaR, 
                        std::vector<std::vector<unsigned char>> mapaC): 
                        Comportamiento(mapaR, mapaC) {
-    // Inicializar Variables de Estado
+    zaps = false;
+    last_action = IDLE;
+    contador_giros = 0;
+    giro_preferido = TURN_SL;
+    last_f = -1;
+    last_c = -1;
+    en_bloqueo = false;
+    en_bloqueo_U = false;
+    walk_left = true;
+    giro_defecto = false;
+    cont_walk = 0;
+
+    //Nivel E
+    hay_plan = false;
 
   }
 
@@ -126,6 +143,13 @@ public:
  * @return Acción a realizar.
  */
   Action ComportamientoTecnicoNivel_6(Sensores sensores);
+
+  /**
+ * @brief Comportamiento del técnico para el Nivel 6.
+ * @param sensores Datos actuales de los sensores.
+ * @return Acción a realizar.
+ */
+  Action ComportamientoTecnicoNivel_E(Sensores sensores);
 
 protected:
   // =========================================================================
@@ -251,6 +275,10 @@ private:
   bool en_bloqueo_U;
   bool giro_defecto;
   vector<vector<int>> visitas;
+
+  //Nivel E
+  bool hay_plan;
+  list<Action> plan;
     
 };
 

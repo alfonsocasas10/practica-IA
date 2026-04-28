@@ -447,6 +447,27 @@ Action ComportamientoTecnico::ComportamientoTecnicoNivel_6(Sensores sensores) {
   return IDLE;
 }
 
+/**
+ * @brief Comportamiento del técnico para el Nivel E.
+ * @param sensores Datos actuales de los sensores.
+ * @return Acción a realizar.
+ */
+Action ComportamientoTecnico::ComportamientoTecnicoNivel_E(Sensores sensores){
+  Action accion = IDLE;
+  if (!hayPlan){
+  // Invocar al método de búsqueda
+  hayPlan = true;
+  }
+  if (hayPlan and plan.size()>0){
+  accion = plan.front();
+  plan.pop_front();
+  }
+  if (plan.size()== 0){
+  hayPlan = false;
+  }
+  return accion;
+}
+
 
 
 

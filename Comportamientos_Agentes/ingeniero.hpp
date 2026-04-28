@@ -33,6 +33,8 @@ public:
     walk_left = true;
     giro_defecto = false;
     cont_walk = 0;
+
+    hay_plan = false;
   }
 
   /**
@@ -43,7 +45,20 @@ public:
   ComportamientoIngeniero(std::vector<std::vector<unsigned char>> mapaR, 
                          std::vector<std::vector<unsigned char>> mapaC): 
                          Comportamiento(mapaR, mapaC) {
-    // Inicializar Variables de Estado
+    zaps = false;
+    last_action = IDLE;
+    contador_giros = 0;
+    giro_preferido = TURN_SL;
+    last_f = -1;
+    last_c = -1;
+    en_bloqueo = false;
+    en_bloqueo_J = false;
+    en_bloqueo_U = false;
+    walk_left = true;
+    giro_defecto = false;
+    cont_walk = 0;
+
+    hay_plan = false;
   }
 
   ComportamientoIngeniero(const ComportamientoIngeniero &comport)
@@ -200,6 +215,11 @@ protected:
    */
   char viablePorAlturaI(char casilla, int dif, bool zap);
 
+  bool CasillaTransitableI(int f, int c, int f_ant, int c_ant, bool tiene_zaps);
+  
+  ubicacion SimularAccionI(ubicacion actual, Action a);
+
+
   // FIN MIS FUNCIONES
 
   /**
@@ -254,6 +274,23 @@ private:
   bool en_bloqueo_U;
   bool giro_defecto;
   vector<vector<int>> visitas;
+
+  //Nivel E
+  bool hay_plan;
+  list<Action> plan;
+
+  // Estructura para el planificador (Búsqueda en anchura)
+  struct NodoBusqueda {
+    ubicacion st;
+    bool tiene_zaps;
+    list<Action> camino;
+
+    bool operator<(const NodoBusqueda &otro) const {
+      if (st.f != otro.st.f) return st.f < otro.st.f;
+      if (st.c != otro.st.c) return st.c < otro.st.c;
+      if (st.brujula != otro.st.brujula) return st.brujula < otro.st.brujula;
+      return tiene_zaps < otro.tiene_zaps;
+    }
 
 };
 

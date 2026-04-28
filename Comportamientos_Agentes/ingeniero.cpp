@@ -510,6 +510,43 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_1(Sensores sensores
   return accion;
 }
 
+
+ubicacion ComportamientoIngeniero::SimularAccionI(ubicacion actual, Action a) {
+  ubicacion sig = actual;
+  int salto = (a == JUMP) ? 2 : 1;
+
+  if (a == WALK || a == JUMP) {
+    switch (actual.brujula) {
+      case norte:     sig.f -= salto; break;
+      case noreste:   sig.f -= salto; sig.c += salto; break;
+      case este:      sig.c += salto; break;
+      case sureste:   sig.f += salto; sig.c += salto; break;
+      case sur:       sig.f += salto; break;
+      case suroeste:  sig.f += salto; sig.c -= salto; break;
+      case oeste:     sig.c -= salto; break;
+      case noroeste:  sig.f -= salto; sig.c -= salto; break;
+    }
+  } else if (a == TURN_SR) {
+    sig.brujula = (Orientacion)((actual.brujula + 1) % 8);
+  } else if (a == TURN_SL) {
+    sig.brujula = (Orientacion)((actual.brujula + 7) % 8);
+  }
+  return sig;
+}
+
+bool ComportamientoIngeniero::CasillaTransitableI(int f, int c, int f_ant, int c_ant, bool tiene_zaps) {
+  // 1. Límites y obstáculos
+  if (f < 0 || f >= mapaResultado.size() || c < 0 || c >= mapaResultado[0].size()) return false;
+  if (mapaResultado[f][c] == 'P' || mapaResultado[f][c] == 'M') return false;
+
+  // 2. Altura: El Ingeniero puede con diferencia 2, y con zapatillas hasta 3
+  int dif = abs((int)mapaCotas[f][c] - (int)mapaCotas[f_ant][c_ant]);
+  int limite = tiene_zaps ? 3 : 2;
+
+  return (dif <= limite);
+}
+
+
 // Niveles avanzados (Uso de búsqueda)
 /**
  * @brief Comportamiento del ingeniero para el Nivel 2 (búsqueda).
@@ -518,7 +555,59 @@ Action ComportamientoIngeniero::ComportamientoIngenieroNivel_1(Sensores sensores
  */
 Action ComportamientoIngeniero::ComportamientoIngenieroNivel_2(Sensores sensores)
 {
-  // TODO: Implementar búsqueda para el Nivel 2.
+  // 1. Si no hay plan, lo calculamos una sola vez (BFS)
+  if (!hay_plan) {
+    plan.clear();
+    queue<NodoBusqueda> abierta;
+    set<NodoBusqueda> cerrada;
+
+    // Estado inicial usando tus variables de clase
+    NodoBusqueda actual = {{sensores.posF, sensores.posC, sensores.rumbo}, zaps, {}};
+    abierta.push(actual);
+
+    while (!abierta.empty()) {
+      actual = abierta.front();
+      abierta.pop();
+
+      // Objetivo: Belkanita
+      if (actual.st.f == sensores.BelPosF && actual.st.c == sensores.BelPosC) {
+        plan = actual.camino;
+        hay_plan = true;
+        break;
+      }
+
+      if (cerrada.find(actual) == cerrada.end()) {
+        cerrada.insert(actual);
+
+        // Acciones del Ingeniero: WALK, JUMP y giros
+        Action posibles[] = {WALK, JUMP, TURN_SR, TURN_SL};
+        for (Action a : posibles) {
+          NodoBusqueda hijo = actual;
+          hijo.st = SimularAccionI(actual.st, a);
+          hijo.camino.push_back(a);
+
+          // Si pasa por una casilla 'D', obtiene zapatillas para el resto del camino
+          if (mapaResultado[hijo.st.f][hijo.st.c] == 'D') hijo.tiene_zaps = true;
+
+          bool valido = true;
+          if (a == WALK || a == JUMP) {
+            valido = CasillaTransitableI(hijo.st.f, hijo.st.c, actual.st.f, actual.st.c, hijo.tiene_zaps);
+          }
+
+          if (valido && cerrada.find(hijo) == cerrada.end()) {
+            abierta.push(hijo);
+          }
+        }
+      }
+    }
+    if (hay_plan) VisualizaPlan({sensores.posF, sensores.posC, sensores.rumbo}, plan);
+  }
+
+  if (hay_plan && !plan.empty()) {
+    Action siguiente = plan.front();
+    plan.pop_front();
+    return siguiente;
+  }
   return IDLE;
 }
 
