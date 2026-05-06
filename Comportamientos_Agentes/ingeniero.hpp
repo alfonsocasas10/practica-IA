@@ -10,6 +10,10 @@
 
 #include "comportamientos/comportamiento.hpp"
 
+extern bool g_ingeniero_listo_install;
+extern bool g_tecnico_listo_install;
+extern vector<Paso> g_plan_n5;
+
 class ComportamientoIngeniero : public Comportamiento {
 public:
   // =========================================================================
@@ -20,22 +24,35 @@ public:
    * @brief Constructor para niveles 0, 1 y 6 (sin mapa completo)
    * @param size Tamaño del mapa (si es 0, se inicializa más tarde)
    */
-  ComportamientoIngeniero(unsigned int size = 0) : Comportamiento(size) {
-    zaps = false;
-    last_action = IDLE;
-    contador_giros = 0;
-    giro_preferido = TURN_SL;
-    last_f = -1;
-    last_c = -1;
-    en_bloqueo = false;
-    en_bloqueo_J = false;
-    en_bloqueo_U = false;
-    walk_left = true;
-    giro_defecto = false;
-    cont_walk = 0;
+    ComportamientoIngeniero(unsigned int size = 0) : Comportamiento(size) {
+      zaps = false;
+      last_action = IDLE;
+      contador_giros =0;
+      giro_preferido = TURN_SR;
+      last_f = -1;
+      last_c = -1;
+      en_bloqueo = false;
+      en_bloqueo_J = false;
+      en_bloqueo_U = false;
+      walk_left = true;
+      giro_defecto = false;
+      cont_walk = 0;
 
-    hay_plan = false;
-  }
+      hayPlan = false;
+
+      tramo_actual_N5 = 0;
+      recien_instalado_N5 = false;
+      tramo_n5 =0;
+      listo_n5 = false;
+      fase_n5 = 0;
+      current_tramo_n5 = 0;
+      giros_180_n5 = 0;
+
+      enPos = false;
+      contRuta = 1;
+      sig_f = -1;
+      sig_c = -1;
+    }
 
   /**
    * @brief Constructor para niveles 2, 3, 4 y 5 (con mapa completo conocido)
@@ -47,7 +64,7 @@ public:
                          Comportamiento(mapaR, mapaC) {
     zaps = false;
     last_action = IDLE;
-    contador_giros = 0;
+    contador_giros =0;
     giro_preferido = TURN_SL;
     last_f = -1;
     last_c = -1;
@@ -58,7 +75,19 @@ public:
     giro_defecto = false;
     cont_walk = 0;
 
-    hay_plan = false;
+    hayPlan = false;
+
+    tramo_actual_N5 = 0;
+    recien_instalado_N5 = false;
+    tramo_n5 =0;
+    listo_n5 = false;
+    fase_n5 = 0;
+    current_tramo_n5 = 0;
+
+    enPos = false;
+    contRuta = 1;
+    sig_f = -1;
+    sig_c = -1;
   }
 
   ComportamientoIngeniero(const ComportamientoIngeniero &comport)
@@ -215,9 +244,26 @@ protected:
    */
   char viablePorAlturaI(char casilla, int dif, bool zap);
 
+  /**
+   * @brief Devuelve la casilla si es transitable.
+   * @return La casilla si está a una altura adecuada, y devuelve 'P' si no.
+   */
   bool CasillaTransitableI(int f, int c, int f_ant, int c_ant, bool tiene_zaps);
   
+  /**
+   * @brief Simula si una accion y te devuelve la siguiente ubicacion.
+   * @param actual Ubicacion actual.
+   * @param a Accion a realizar.
+   * @return La siguiente ubicacion.
+   */
   ubicacion SimularAccionI(ubicacion actual, Action a);
+
+  /**
+   * @brief Comportamiento diseñado especialmente para el nivel 6, prioriza investigar las casillas '?'.
+   * @param sensores Sensores del agente.
+   * @return La siguiente accion a realizar.
+   */
+  Action InvestigacionInteligenteI(Sensores sensores);
 
 
   // FIN MIS FUNCIONES
@@ -274,23 +320,65 @@ private:
   bool en_bloqueo_U;
   bool giro_defecto;
   vector<vector<int>> visitas;
-
-  //Nivel E
-  bool hay_plan;
+  bool hayPlan;
   list<Action> plan;
+  vector<pair<int, int>> plan_tuberias_N5;
+  int tramo_actual_N5;
+  list<pair<int,int>> plan_navegacion_N5;
+  bool recien_instalado_N5;
+  vector<pair<int,int>> plan_n5;
+  int tramo_n5;
+  bool listo_n5;
+  int fase_n5;
+  int current_tramo_n5;
+  int giros_180_n5; // Contador de giros para 180°
+  set<pair<int,int>> forbidden_cells;
+  bool enPos;
+  int contRuta;
+  int sig_f;
+  int sig_c;
+  int sig_op;
+  list<int> ops;
+
+
 
   // Estructura para el planificador (Búsqueda en anchura)
-  struct NodoBusqueda {
+  struct NodoBusquedaI {
     ubicacion st;
-    bool tiene_zaps;
-    list<Action> camino;
+  bool tiene_zaps;
+  list<Action> camino;
 
-    bool operator<(const NodoBusqueda &otro) const {
-      if (st.f != otro.st.f) return st.f < otro.st.f;
-      if (st.c != otro.st.c) return st.c < otro.st.c;
-      if (st.brujula != otro.st.brujula) return st.brujula < otro.st.brujula;
-      return tiene_zaps < otro.tiene_zaps;
+  // El operator< es fundamental para que el SET de 'cerrada' no ignore 
+  // estados donde el agente ahora tiene zapatillas pero antes no.
+  bool operator<(const NodoBusquedaI &otro) const {
+    if (st.f != otro.st.f) return st.f < otro.st.f;
+    if (st.c != otro.st.c) return st.c < otro.st.c;
+    if (st.brujula != otro.st.brujula) return st.brujula < otro.st.brujula;
+    return tiene_zaps < otro.tiene_zaps;
+  }
+  };
+
+// Estructuras necesarias para el BFS
+struct EstadoTuberia {
+    int f, c, h_tuberia;
+    // Indispensable para usar std::map de C++ de forma segura
+    bool operator<(const EstadoTuberia& o) const {
+        if (f != o.f) return f < o.f;
+        if (c != o.c) return c < o.c;
+        return h_tuberia < o.h_tuberia;
     }
+};
+
+
+
+struct NodoTuberia {
+    EstadoTuberia st;
+    list<Paso> camino;
+    int eco;
+    int longitud;  // NUEVO
+    int op;
+    bool operator>(const NodoTuberia& o) const { return longitud > o.longitud; }  // ordenar por longitud
+};
 
 };
 

@@ -8,6 +8,11 @@
 
 #include "comportamientos/comportamiento.hpp"
 
+extern bool g_ingeniero_listo_install;
+extern bool g_tecnico_listo_install;
+extern vector<Paso> g_plan_n5;
+
+
 // =========================================================================
 // DOCUMENTACIÓN PARA ESTUDIANTES
 // =========================================================================
@@ -34,7 +39,7 @@ public:
   ComportamientoTecnico(unsigned int size = 0) : Comportamiento(size) {
     zaps = false;
     last_action = IDLE;
-    contador_giros = 0;
+    contador_giros =0;
     giro_preferido = TURN_SL;
     last_f = -1;
     last_c = -1;
@@ -45,9 +50,22 @@ public:
     cont_walk = 0;
 
     //Nivel E
-    hay_plan = false;
+    hayPlan = false;
 
-  }
+    tramo_actual_N5 = 0;
+    recien_instalado_N5 = false;
+    tramo_n5 = 0;
+    listo_n5 = false;
+    tec_n5_esperando = true;
+    tec_n5_ruta.clear();
+    tec_n5_fase = 0;
+    tec_n5_target_f = -1;
+    tec_n5_target_c = -1;
+    gof = -1;
+    goc = -1;
+    giros_180_tec_n5 = 0;
+    contMov = 0;
+   }
 
   /**
    * @brief Constructor para niveles 2, 3, 4 y 5 (con mapa completo conocido)
@@ -59,7 +77,7 @@ public:
                        Comportamiento(mapaR, mapaC) {
     zaps = false;
     last_action = IDLE;
-    contador_giros = 0;
+    contador_giros =0;
     giro_preferido = TURN_SL;
     last_f = -1;
     last_c = -1;
@@ -70,9 +88,25 @@ public:
     cont_walk = 0;
 
     //Nivel E
-    hay_plan = false;
+    hayPlan = false;
 
-  }
+    tramo_actual_N5 = 0;
+    recien_instalado_N5 = false;
+    tramo_n5 =0;
+    listo_n5 = false;
+    tec_n5_esperando = true;
+    tec_n5_ruta.clear();
+    tec_n5_fase = 0;
+    tec_n5_target_f = -1;
+    tec_n5_target_c = -1;
+    giros_180_tec_n5 = 0;
+  
+      gof = -1;
+      goc = -1;
+      bloqueadoF = -1;
+      bloqueadoC = -1;
+      contMov = 0;
+   }
 
   ComportamientoTecnico(const ComportamientoTecnico &comport): Comportamiento(comport) {}
   ~ComportamientoTecnico() {}
@@ -151,6 +185,9 @@ public:
  */
   Action ComportamientoTecnicoNivel_E(Sensores sensores);
 
+  // Función auxiliar para planificar ruta con mínima energía (nivel 3)
+  list<Action> PlanificarRutaN5(int target_f, int target_c, Sensores sensores);
+ 
 protected:
   // =========================================================================
   // FUNCIONES PROPORCIONADAS
@@ -233,15 +270,48 @@ protected:
    */
   char viablePorAlturaT(char casilla, int dif);
 
+  /**
+   * @brief Observa que casilla es preferible.
+   * @return El numero indicando cual es mejor.
+   */
   int veoCasillaExplorarT(bool vi, bool vc, bool vd, char i, char c, char d);
 
-    /**
+  
+  /**
+   * @brief Simula si una accion y te devuelve la siguiente ubicacion.
+   * @param actual Ubicacion actual.
+   * @param a Accion a realizar.
+   * @return La siguiente ubicacion.
+   */
+  ubicacion SimularAccionT(ubicacion actual, Action a);
+
+  /**
+   * @brief Devuelve la casilla si es transitable.
+   * @return La casilla si está a una altura adecuada, y devuelve 'P' si no.
+   */
+  bool CasillaTransitableT(int f, int c, int f_ant, int c_ant, bool con_zaps);
+  
+  /**
+   * @brief Comportamiento diseñado especialmente para el nivel 6, prioriza investigar las casillas '?'.
+   * @param sensores Sensores del agente.
+   * @return La siguiente accion a realizar.
+   */
+  Action InvestigacionInteligenteT(Sensores sensores);
+
+  /**
+   * @brief Comportamiento diseñado especialmente para el nivel 6, investiga avanzando hacia gof y goc.
+   * @param sensores Sensores del agente.
+   * @return La siguiente accion a realizar.
+   */
+  Action NavegacionHaciaObjetivo(Sensores sensores);
+
+// FIN MIS FUNCIONES
+
+/**
  * @brief Imprime por consola la secuencia de acciones de un plan para un agente.
  * @param plan  Lista de acciones del plan.
  */
   void PintaPlan(const list<Action> &plan);
-
-// FIN MIS FUNCIONES
 
 /**
  * @brief Imprime las coordenadas y operaciones de un plan de tubería.
@@ -275,11 +345,50 @@ private:
   bool en_bloqueo_U;
   bool giro_defecto;
   vector<vector<int>> visitas;
-
-  //Nivel E
-  bool hay_plan;
+  bool hayPlan;
   list<Action> plan;
-    
+  vector<pair<int, int>> plan_tuberias_N5;
+  int tramo_actual_N5;
+  list<pair<int,int>> plan_navegacion_N5;
+  bool recien_instalado_N5;
+  vector<pair<int,int>> plan_n5;
+  int tramo_n5;
+  bool listo_n5;
+  bool tec_n5_esperando;
+  list<Action> tec_n5_ruta;
+  int tec_n5_fase; // 0: esperando ingeniero, 1: esperando COME, 2: planificando, 3: ejecutando ruta, 4: orientando e INSTALL
+  int tec_n5_target_f, tec_n5_target_c;
+  int gof;
+  int goc;
+  int contMov;
+  int bloqueadoF;
+  int bloqueadoC;
+  int giros_180_tec_n5;
+
+ 
+  struct NodoBusquedaT {
+    ubicacion st;
+    bool tiene_zaps;
+    list<Action> camino;
+    int g; // Energía gastada
+    int f; // g + h
+
+    // La cola de prioridad necesita el menor f arriba
+    bool operator>(const NodoBusquedaT &otro) const {
+        return f > otro.f;
+    }
+  };
+
+  // Comparador para que el std::map acepte ubicacion + tiene_zaps
+  struct ComparaEstado {
+      bool operator()(const pair<ubicacion, bool> &a, const pair<ubicacion, bool> &b) const {
+          if (a.first.f != b.first.f) return a.first.f < b.first.f;
+          if (a.first.c != b.first.c) return a.first.c < b.first.c;
+          if (a.first.brujula != b.first.brujula) return a.first.brujula < b.first.brujula;
+          return a.second < b.second;
+      }
+  };
+
 };
 
 #endif
